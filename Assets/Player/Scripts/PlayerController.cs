@@ -10,8 +10,11 @@ public class PlayerController : MonoBehaviour
     private PlayerInput playerInput;
     private InputAction move;
 
+    private StateManager stateManager;
+
     private void Awake()
     {
+        stateManager = GameObject.Find("Manager").GetComponent<StateManager>();
         playerInput = GetComponent<PlayerInput>();
         move = playerInput.actions["Move"];
     }
@@ -20,7 +23,7 @@ public class PlayerController : MonoBehaviour
     {
         Vector3 movement = new Vector3(move.ReadValue<Vector2>().x, 0, move.ReadValue<Vector2>().y);
 
-        if (movement != Vector3.zero)
+        if (movement != Vector3.zero && !stateManager.IsCrateMoving && !stateManager.IsVictory)
         {
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(movement), 0.15F);
             transform.Translate(movement * movementSpeed * Time.deltaTime, Space.World);

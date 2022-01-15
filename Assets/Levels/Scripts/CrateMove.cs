@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,11 +10,10 @@ public class CrateMove : MonoBehaviour
     [SerializeField] private float moveSpeed = 5;
     [SerializeField] private float moveDistance = 1;
     private float moveDistanceCurrent = 0;
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+
+    public delegate void IsCrateMoving();
+    public IsCrateMoving onCrateMove;
+    public IsCrateMoving offCrateMove;
 
     // Update is called once per frame
     void Update()
@@ -25,7 +25,7 @@ public class CrateMove : MonoBehaviour
             if(moveDistanceCurrent >= moveDistance)
             {
                 transform.position += moveInDirection * (moveDistanceCurrent - moveDistance);
-                isMoving = false;
+                StopMoving();
                 moveDistanceCurrent = 0;
             }
             else
@@ -39,16 +39,37 @@ public class CrateMove : MonoBehaviour
         if (collision.transform.CompareTag("Player") && !isMoving)
         {
             Vector3 direction = moveDirection(collision.GetContact(0).point - transform.position);
-            if (direction != Vector3.zero)
+            Vector3 moveTo = transform.position + moveDistance * direction;
+            if (direction != Vector3.zero && isPostionEmpty(moveTo))
             {
-                moveInDirection = direction;
-                isMoving = true;
+                BeginMove(direction);
             }
         }
-        else
+    }
+
+    private bool isPostionEmpty(Vector3 moveTo)
+    {
+        GameObject[] crates = GameObject.FindGameObjectsWithTag("Crate");
+        foreach (var crate in crates)
         {
-            Debug.Log(collision.gameObject.name);
+            if(crate.transform != transform)
+            {
+                if(Vector3.Distance(moveTo, crate.transform.position) < moveDistance / 2)
+                {
+                    return false;
+                }
+            }
         }
+        GameObject[] walls = GameObject.FindGameObjectsWithTag("Wall");
+        foreach (var wall in walls)
+        {
+            if (Vector3.Distance(moveTo, wall.transform.position) < moveDistance / 2)
+            {
+                Debug.Log("wall in position");
+                return false;
+            }
+        }
+        return true;
     }
 
     private Vector3 moveDirection(Vector3 from)
@@ -76,5 +97,33 @@ public class CrateMove : MonoBehaviour
             }
         }
         return Vector3.zero;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.transform.CompareTag("Target"))
+        {
+            other.gameObject.GetComponent<TargetBehaviour>().onCrateEnter();
+        }
+    }
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.transform.CompareTag("Target"))
+        {
+            other.gameObject.GetComponent<TargetBehaviour>().onCrateExit();
+        }
+    }
+
+    private void BeginMove(Vector3 direction)
+    {
+        moveInDirection = direction;
+        isMoving = true;
+        onCrateMove();
+    }
+    private void StopMoving()
+    {
+        moveInDirection = Vector3.zero;
+        isMoving = false;
+        offCrateMove();
     }
 }
